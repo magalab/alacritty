@@ -1,4 +1,6 @@
 TARGET = alacritty
+ARM_TARGET = aarch64-apple-darwin
+ARM_BINARY = target/$(ARM_TARGET)/release/$(TARGET)
 
 ASSETS_DIR = extra
 RELEASE_DIR = target/release
@@ -35,6 +37,7 @@ help: ## Print this help message
 
 binary: $(TARGET)-native ## Build a release binary
 binary-universal: $(TARGET)-universal ## Build a universal release binary
+binary-arm64: $(TARGET)-arm64 ## Build an Apple Silicon release binary
 $(TARGET)-native:
 	MACOSX_DEPLOYMENT_TARGET="10.12" cargo build --release
 $(TARGET)-universal:
@@ -42,8 +45,13 @@ $(TARGET)-universal:
 	MACOSX_DEPLOYMENT_TARGET="10.12" cargo build --release --target=aarch64-apple-darwin
 	@lipo target/{x86_64,aarch64}-apple-darwin/release/$(TARGET) -create -output $(APP_BINARY)
 
+$(TARGET)-arm64:
+	MACOSX_DEPLOYMENT_TARGET="10.12" cargo build --release --target=$(ARM_TARGET)
+
 app: $(APP_NAME)-native ## Create an Alacritty.app
 app-universal: $(APP_NAME)-universal ## Create a universal Alacritty.app
+app-arm64: $(APP_NAME)-arm64 ## Create an Apple Silicon Alacritty.app
+$(APP_NAME)-arm64: APP_BINARY = $(ARM_BINARY)
 $(APP_NAME)-%: $(TARGET)-%
 	@mkdir -p $(APP_BINARY_DIR)
 	@mkdir -p $(APP_EXTRAS_DIR)
@@ -64,6 +72,7 @@ $(APP_NAME)-%: $(TARGET)-%
 
 dmg: $(DMG_NAME)-native ## Create an Alacritty.dmg
 dmg-universal: $(DMG_NAME)-universal ## Create a universal Alacritty.dmg
+dmg-arm64: $(DMG_NAME)-arm64 ## Create an Apple Silicon Alacritty.dmg
 $(DMG_NAME)-%: $(APP_NAME)-%
 	@echo "Packing disk image..."
 	@ln -sf /Applications $(DMG_DIR)/Applications
@@ -79,7 +88,7 @@ install-universal: $(INSTALL)-native ## Mount universal disk image
 $(INSTALL)-%: $(DMG_NAME)-%
 	@open $(DMG_DIR)/$(DMG_NAME)
 
-.PHONY: app binary clean dmg install $(TARGET) $(TARGET)-universal
+.PHONY: app binary binary-arm64 app-arm64 clean dmg dmg-arm64 install $(TARGET) $(TARGET)-universal $(TARGET)-arm64
 
 clean: ## Remove all build artifacts
 	@cargo clean
